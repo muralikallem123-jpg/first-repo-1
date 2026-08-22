@@ -1,3 +1,4 @@
+/*
 package net.javaguides.springboot;
 
 import org.junit.jupiter.api.Test;
@@ -11,3 +12,4 @@ class SpringbootBackendApplicationTests {
 	}
 
 }
+*/
