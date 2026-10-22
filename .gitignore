@@ -1,0 +1,17 @@
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Build output
+**/node_modules/
+**/build/
+**/target/
+
+# Terraform state
+**/.terraform/
+*.tfstate
+*.tfstate.*
+tfplan
+*.tfvars
+*.tfvars.json
