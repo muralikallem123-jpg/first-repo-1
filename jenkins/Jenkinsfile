@@ -1,0 +1,52 @@
+pipeline {
+    agent any
+
+    options {
+        skipDefaultCheckout(true)
+        timestamps()
+    }
+
+    environment {
+        CI = 'true'
+        NODE_OPTIONS = '--openssl-legacy-provider'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                sh 'git rev-parse --short HEAD'
+            }
+        }
+
+        stage('Backend: Maven verify') {
+            steps {
+                dir('springboot-backend') {
+                    sh 'java -version'
+                    sh 'bash mvnw -B clean verify'
+                }
+            }
+        }
+
+        stage('Frontend: test and build') {
+            steps {
+                dir('frontend') {
+                    sh 'node --version'
+                    sh 'npm --version'
+                    sh 'npm ci --legacy-peer-deps'
+                    sh 'npm test -- --watchAll=false --passWithNoTests'
+                    sh 'npm run build'
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Both applications passed the initial CI build.'
+        }
+        failure {
+            echo 'Build failed. Review the first failing stage before adding more pipeline steps.'
+        }
+    }
+}
