@@ -95,7 +95,7 @@ pipeline {
                             import_addon() {
                                 addon="$1"
                                 resource="$2"
-                                address="${resource}[\"${addon}\"]"
+                                address=$(printf '%s["%s"]' "$resource" "$addon")
                                 if aws eks describe-addon --region "$AWS_REGION" --cluster-name "$CLUSTER_NAME" --addon-name "$addon" >/dev/null 2>&1; then
                                     if terraform state show "$address" >/dev/null 2>&1; then
                                         echo "$addon is already tracked in Terraform state."
