@@ -11,7 +11,8 @@ This reduced Terraform configuration creates a VPC, an EKS cluster with four man
 - The first cluster run does not require Route 53 or ACM. Create the public hosted zone and regional ACM certificate manually later, before configuring custom DNS/HTTPS ingress.
 - This first phase does not install EBS CSI, Cluster Autoscaler, AWS Load Balancer Controller, or ExternalDNS. Add them later if the account's organization policy permits the required AWS identity setup.
 - Choose an EKS Kubernetes version supported in your AWS region and by the pinned Cluster Autoscaler add-on.
-- The public Kubernetes API is restricted to `cluster_endpoint_public_access_cidrs`. Replace the documentation-only address in the example with your current public IP `/32`.
+- The public Kubernetes API is restricted to `cluster_endpoint_public_access_cidrs` by default. Replace the documentation-only address in the example with your current public IP `/32`.
+- For a short practice-only test, Jenkins has a `TEMPORARY_OPEN_API` parameter that sets the CIDR to `0.0.0.0/0`. This exposes the Kubernetes API to the internet. Turn it off immediately after testing and rerun Terraform with trusted CIDRs.
 
 Check standard-support Kubernetes versions in the target region:
 
@@ -28,7 +29,7 @@ cd terraform/eks
 Copy-Item terraform.tfvars.example terraform.tfvars
 ```
 
-Edit `terraform.tfvars` with a supported Kubernetes version and your trusted public API CIDR. `terraform.tfvars` is ignored by Git; do not commit credentials or secrets.
+Edit `terraform.tfvars` with a supported Kubernetes version and your trusted public API CIDR. Keep `allow_public_api_from_anywhere = false` for normal use. `terraform.tfvars` is ignored by Git; do not commit credentials or secrets.
 
 ## Plan and Create
 
@@ -48,7 +49,7 @@ Review the plan carefully before applying. Four continuously running node groups
 2. On the Jenkins controller/agent, install Terraform `1.10+` and AWS CLI v2. Install the Jenkins **AWS Credentials** plugin.
 3. In **Manage Jenkins → Credentials**, add the IAM user's access key as credential type **AWS Credentials**, with ID `aws-demo-terraform`. Do not put keys in this repository, build parameters, or the Jenkinsfile.
 4. Create a Jenkins **Pipeline** job configured as **Pipeline script from SCM**. Select Git, your repository and branch, and set **Script Path** to `jenkins/Jenkinsfile.eks`.
-5. Run the job with region `ap-southeast-2`, cluster name `eks-practice`, Kubernetes version `1.35`, your public IP as `ADMIN_CIDR` (for example `198.51.100.25/32`), and the S3 state bucket name.
+5. Normally run the job with Jenkins/CloudShell egress addresses as comma-separated `/32` entries in `ADMIN_CIDR`. Only for a brief practice test, select `TEMPORARY_OPEN_API` instead; it opens the Kubernetes API to all IPv4 addresses.
 6. The job checks the AWS identity and verifies that Kubernetes `1.35` is in standard support in the selected region. It runs Terraform init, formatting/validation, imports any pre-existing `coredns`, `kube-proxy`, or `vpc-cni` add-ons not already tracked in the same Terraform state, then prints the plan and automatically applies it if the earlier stages succeed. Every run can change billable AWS resources; inspect the plan output and parameter values before starting the job.
 
 The Jenkins identity needs S3 state access (`s3:ListBucket`, `s3:GetObject`, `s3:PutObject`, and state-lock file operations) plus permissions for the resources Terraform manages, including IAM role creation and `iam:PassRole`. It also needs to read EKS version metadata in `ap-southeast-2`. Scope these permissions to the demo account/resources where practical. The pipeline does not create its own state bucket.

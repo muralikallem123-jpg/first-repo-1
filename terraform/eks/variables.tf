@@ -23,13 +23,23 @@ variable "vpc_cidr" {
 }
 
 variable "cluster_endpoint_public_access_cidrs" {
-  description = "Trusted public IPv4 CIDRs allowed to reach the Kubernetes API. Use your current public IP with /32."
+  description = "Public IPv4 CIDRs allowed to reach the Kubernetes API; normally restrict these to trusted /32 addresses."
   type        = list(string)
 
   validation {
-    condition     = length(var.cluster_endpoint_public_access_cidrs) > 0 && !contains(var.cluster_endpoint_public_access_cidrs, "0.0.0.0/0")
-    error_message = "Provide at least one trusted CIDR; do not expose the EKS API to 0.0.0.0/0."
+    condition = (
+      length(var.cluster_endpoint_public_access_cidrs) > 0 &&
+      (!contains(var.cluster_endpoint_public_access_cidrs, "0.0.0.0/0") || var.allow_public_api_from_anywhere) &&
+      (!var.allow_public_api_from_anywhere || contains(var.cluster_endpoint_public_access_cidrs, "0.0.0.0/0"))
+    )
+    error_message = "Provide at least one CIDR. Use 0.0.0.0/0 only when allow_public_api_from_anywhere is true."
   }
+}
+
+variable "allow_public_api_from_anywhere" {
+  description = "Temporary practice-only override to allow any IPv4 address to reach the public EKS API endpoint."
+  type        = bool
+  default     = false
 }
 
 variable "frontend_instance_type" {
