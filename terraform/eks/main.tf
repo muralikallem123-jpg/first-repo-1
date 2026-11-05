@@ -95,13 +95,15 @@ module "eks" {
 
   eks_managed_node_groups = {
     for name, config in local.node_groups : name => {
-      name           = "${var.cluster_name}-${name}"
-      ami_type       = "AL2023_x86_64_STANDARD"
-      instance_types = config.instance_types
-      capacity_type  = "ON_DEMAND"
-      min_size       = 1
-      desired_size   = 1
-      max_size       = 3
+      name                     = "${var.cluster_name}-${name}"
+      iam_role_name            = name == "monitoring" ? "${var.cluster_name}-monitor-node" : null
+      iam_role_use_name_prefix = name != "monitoring"
+      ami_type                 = "AL2023_x86_64_STANDARD"
+      instance_types           = config.instance_types
+      capacity_type            = "ON_DEMAND"
+      min_size                 = 1
+      desired_size             = 1
+      max_size                 = 3
 
       labels = {
         workload = name
