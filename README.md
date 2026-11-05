@@ -1,13 +1,15 @@
 # EKS Practice Project
 
-This repository is being built in milestones. The first milestone is only the local React + Spring Boot application and its MySQL database. Terraform, Helm, and Jenkins folders are placeholders for later phases; no AWS resources or CI/CD pipelines are created yet.
+This repository is being built in milestones. The local React + Spring Boot application and its MySQL database are the first milestone. An EKS Terraform starter now lives in `terraform/eks/`; it has not been applied and creates no AWS resources until you run Terraform. Helm charts and later deployment pipelines remain future milestones.
 
 ## Current Application
 
 - `frontend/` - React employee portal.
 - `springboot-backend/` - existing Spring Boot API. It remains under this name for now because its local Java process is running; rename it to `backend/` after stopping that process.
 - `database/init.sql` - creates the local application database.
-- `terraform/`, `helm/`, and `jenkins/` - reserved for later milestones.
+- `terraform/eks/` - EKS/VPC, four labeled node groups, cluster add-ons/controllers, Route 53, and ACM Terraform configuration. See `terraform/eks/README.md` before running it.
+- `helm/` - reserved for application charts in a later milestone.
+- `jenkins/` - contains the initial app CI pipeline; later infrastructure/deployment pipelines will be added in future milestones.
 
 The frontend calls `http://localhost:8080/api/v1/employees`. The backend allows requests from `http://localhost:3000` and reads its database password from the `DB_PASSWORD` environment variable. Do not put the password in Git.
 
@@ -62,7 +64,7 @@ Open `http://localhost:3000`, create an employee, and verify it appears in the l
 1. Create or rename the GitHub repository to `eks-practice-project`, update the `origin` remote only after the new repository exists, then push this project.
 2. Complete local app testing before adding Jenkins or AWS infrastructure.
 3. Add Jenkins and application CI in the `jenkins/` folder.
-4. Add EKS Terraform in `terraform/` only after AWS account security and budget alerts are configured.
+4. Review and validate `terraform/eks/` only after AWS account security, a state bucket, and budget alerts are configured; inspect the plan before applying.
 5. Add application and supporting-service charts in `helm/` after the cluster is ready.
 
 AWS account creation, MFA, billing alerts, repository creation, and pushing to GitHub require your account actions. Review AWS costs carefully before creating EKS resources.

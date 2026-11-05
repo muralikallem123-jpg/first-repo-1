@@ -1,0 +1,118 @@
+pipeline {
+    agent any
+
+    options {
+        skipDefaultCheckout(true)
+        timestamps()
+        disableConcurrentBuilds()
+    }
+
+    parameters {
+        string(name: 'AWS_REGION', defaultValue: 'ap-southeast-2', description: 'AWS region for the EKS cluster')
+        string(name: 'CLUSTER_NAME', defaultValue: 'eks-practice', description: 'EKS cluster name')
+        string(name: 'KUBERNETES_VERSION', defaultValue: '1.35', description: 'Kubernetes version; add-on chart versions currently match 1.35')
+        booleanParam(name: 'ENABLE_EXTERNAL_DNS', defaultValue: false, description: 'Enable later, after manually creating a public Route 53 hosted zone')
+        string(name: 'DOMAIN_NAME', defaultValue: '', description: 'Required only when ENABLE_EXTERNAL_DNS is selected')
+        string(name: 'ROUTE53_HOSTED_ZONE_ID', defaultValue: '', description: 'Existing hosted zone ID; required only when ENABLE_EXTERNAL_DNS is selected')
+        string(name: 'ADMIN_CIDR', defaultValue: '', description: 'Your public IPv4 address with /32, such as 198.51.100.25/32')
+        string(name: 'TF_STATE_BUCKET', defaultValue: '', description: 'Existing private/versioned S3 bucket for Terraform state')
+    }
+
+    environment {
+        AWS_DEFAULT_REGION = "${params.AWS_REGION}"
+        TF_IN_AUTOMATION = 'true'
+        TF_VAR_aws_region = "${params.AWS_REGION}"
+        TF_VAR_cluster_name = "${params.CLUSTER_NAME}"
+        TF_VAR_kubernetes_version = "${params.KUBERNETES_VERSION}"
+        TF_VAR_external_dns_enabled = "${params.ENABLE_EXTERNAL_DNS}"
+        TF_VAR_domain_name = "${params.DOMAIN_NAME}"
+        TF_VAR_route53_hosted_zone_id = "${params.ROUTE53_HOSTED_ZONE_ID}"
+        TF_VAR_cluster_endpoint_public_access_cidrs = "[\"${params.ADMIN_CIDR}\"]"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Validate inputs and AWS identity') {
+            steps {
+                script {
+                    if (!params.ADMIN_CIDR?.trim() || !params.TF_STATE_BUCKET?.trim()) {
+                        error('Set ADMIN_CIDR and TF_STATE_BUCKET before running.')
+                    }
+                    if (params.ENABLE_EXTERNAL_DNS && (!params.DOMAIN_NAME?.trim() || !params.ROUTE53_HOSTED_ZONE_ID?.trim())) {
+                        error('Set DOMAIN_NAME and ROUTE53_HOSTED_ZONE_ID when ENABLE_EXTERNAL_DNS is selected.')
+                    }
+                    if (params.ADMIN_CIDR.trim() == '0.0.0.0/0') {
+                        error('ADMIN_CIDR must be restricted to your trusted public IP; do not use 0.0.0.0/0.')
+                    }
+                    if (params.KUBERNETES_VERSION != '1.35') {
+                        error('This practice configuration pins add-on charts for Kubernetes 1.35. Update the chart/image versions in terraform/eks/main.tf before selecting another version.')
+                    }
+                }
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-demo-terraform']]) {
+                    sh 'aws sts get-caller-identity'
+                    sh '''
+                        version_status=$(aws eks describe-cluster-versions --region "$AWS_REGION" --cluster-versions "$KUBERNETES_VERSION" --version-status STANDARD_SUPPORT --query "clusterVersions[0].versionStatus" --output text)
+                        if [ "$version_status" != "STANDARD_SUPPORT" ]; then
+                            echo "Kubernetes $KUBERNETES_VERSION is not available in standard support in $AWS_REGION."
+                            exit 1
+                        fi
+                    '''
+                }
+            }
+        }
+
+        stage('Terraform init') {
+            steps {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-demo-terraform']]) {
+                    dir('terraform/eks') {
+                        sh 'terraform init -input=false -backend-config="bucket=$TF_STATE_BUCKET" -backend-config="key=$CLUSTER_NAME/terraform.tfstate" -backend-config="region=$AWS_REGION" -backend-config="encrypt=true" -backend-config="use_lockfile=true"'
+                    }
+                }
+            }
+        }
+
+        stage('Terraform validate') {
+            steps {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-demo-terraform']]) {
+                    dir('terraform/eks') {
+                        sh 'terraform fmt -check -recursive'
+                        sh 'terraform validate'
+                    }
+                }
+            }
+        }
+
+        stage('Terraform plan') {
+            steps {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-demo-terraform']]) {
+                    dir('terraform/eks') {
+                        sh 'terraform plan -input=false -no-color -out=tfplan'
+                        sh 'terraform show -no-color tfplan'
+                    }
+                }
+            }
+        }
+
+        stage('Approve Terraform apply') {
+            steps {
+                input message: 'Review the Terraform plan in the console output. Apply these AWS changes?', ok: 'Apply'
+            }
+        }
+
+        stage('Terraform apply') {
+            steps {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-demo-terraform']]) {
+                    dir('terraform/eks') {
+                        sh 'terraform apply -input=false -auto-approve tfplan'
+                        sh 'terraform output'
+                    }
+                }
+            }
+        }
+    }
+}

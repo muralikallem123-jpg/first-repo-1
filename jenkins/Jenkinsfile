@@ -32,6 +32,16 @@ pipeline {
             }
         }
 
+        stage('Backend: SonarQube scan') {
+            steps {
+                dir('springboot-backend') {
+                    withSonarQubeEnv('SonarQube') {
+                        sh 'bash mvnw -B sonar:sonar -Dsonar.projectKey=employee-backend -Dsonar.sources=src/main/java -Dsonar.java.binaries=target/classes'
+                    }
+                }
+            }
+        }
+
         stage('Frontend: test and build') {
             steps {
                 dir('frontend') {
@@ -40,6 +50,19 @@ pipeline {
                     sh 'npm ci --legacy-peer-deps'
                     sh 'npm test -- --watchAll=false --passWithNoTests'
                     sh 'CI=false npm run build'
+                }
+            }
+        }
+
+        stage('Frontend: SonarQube scan') {
+            steps {
+                dir('frontend') {
+                    script {
+                        def scannerHome = tool 'SonarScanner'
+                        withSonarQubeEnv('SonarQube') {
+                            sh "${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=employee-frontend -Dsonar.sources=src"
+                        }
+                    }
                 }
             }
         }
