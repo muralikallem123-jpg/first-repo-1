@@ -56,7 +56,7 @@ pipeline {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-demo-terraform']]) {
                     sh 'aws sts get-caller-identity'
                     sh '''
-                        version_status=$(aws eks describe-cluster-versions --region "$AWS_REGION" --cluster-versions "$KUBERNETES_VERSION" --version-status STANDARD_SUPPORT --query "clusterVersions[0].versionStatus" --output text)
+                        version_status=$(aws eks describe-cluster-versions --region "$AWS_REGION" --version-status STANDARD_SUPPORT --query "clusterVersions[?clusterVersion=='${KUBERNETES_VERSION}'].versionStatus | [0]" --output text)
                         if [ "$version_status" != "STANDARD_SUPPORT" ]; then
                             echo "Kubernetes $KUBERNETES_VERSION is not available in standard support in $AWS_REGION."
                             exit 1
