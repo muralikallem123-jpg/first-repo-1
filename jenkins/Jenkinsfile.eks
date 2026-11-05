@@ -51,7 +51,7 @@ pipeline {
                             error('Use trusted CIDRs in ADMIN_CIDR; 0.0.0.0/0 is only permitted with TEMPORARY_OPEN_API.')
                         }
                     }
-                    env.TF_VAR_cluster_endpoint_public_access_cidrs = groovy.json.JsonOutput.toJson(adminCidrs)
+                    env.TF_VAR_cluster_endpoint_public_access_cidrs = '["' + adminCidrs.join('","') + '"]'
                     if (params.KUBERNETES_VERSION != '1.35') {
                         error('This practice configuration pins add-on charts for Kubernetes 1.35. Update the chart/image versions in terraform/eks/main.tf before selecting another version.')
                     }
