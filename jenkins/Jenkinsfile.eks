@@ -87,6 +87,30 @@ pipeline {
             }
         }
 
+        stage('Import existing core EKS add-ons') {
+            steps {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-demo-terraform']]) {
+                    dir('terraform/eks') {
+                        sh '''
+                            for addon in coredns kube-proxy vpc-cni; do
+                                address='module.eks.aws_eks_addon.this["'${addon}'"]'
+                                if aws eks describe-addon --region "$AWS_REGION" --cluster-name "$CLUSTER_NAME" --addon-name "$addon" >/dev/null 2>&1; then
+                                    if terraform state show "$address" >/dev/null 2>&1; then
+                                        echo "$addon is already tracked in Terraform state."
+                                    else
+                                        echo "Importing existing $addon add-on into Terraform state."
+                                        terraform import -input=false "$address" "$CLUSTER_NAME:$addon"
+                                    fi
+                                else
+                                    echo "$addon does not exist yet; Terraform can create it."
+                                fi
+                            done
+                        '''
+                    }
+                }
+            }
+        }
+
         stage('Terraform plan') {
             steps {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-demo-terraform']]) {
