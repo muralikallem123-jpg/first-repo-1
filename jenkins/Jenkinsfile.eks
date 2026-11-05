@@ -98,12 +98,6 @@ pipeline {
             }
         }
 
-        stage('Approve Terraform apply') {
-            steps {
-                input message: 'Review the Terraform plan in the console output. Apply these AWS changes?', ok: 'Apply'
-            }
-        }
-
         stage('Terraform apply') {
             steps {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-demo-terraform']]) {

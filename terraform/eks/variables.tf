@@ -32,56 +32,28 @@ variable "cluster_endpoint_public_access_cidrs" {
   }
 }
 
-variable "domain_name" {
-  description = "Existing public Route 53 hosted zone domain used by ExternalDNS when enabled, for example example.com."
-  type        = string
-  default     = ""
-
-  validation {
-    condition     = !var.external_dns_enabled || length(trimspace(var.domain_name)) > 0
-    error_message = "Set domain_name when external_dns_enabled is true."
-  }
-}
-
-variable "route53_hosted_zone_id" {
-  description = "ID of the existing public Route 53 hosted zone for ExternalDNS when enabled, without the /hostedzone/ prefix."
-  type        = string
-  default     = ""
-
-  validation {
-    condition     = !var.external_dns_enabled || length(trimspace(var.route53_hosted_zone_id)) > 0
-    error_message = "Set route53_hosted_zone_id when external_dns_enabled is true."
-  }
-}
-
-variable "external_dns_enabled" {
-  description = "Enable ExternalDNS after a public Route 53 hosted zone has been created manually."
-  type        = bool
-  default     = false
-}
-
 variable "frontend_instance_type" {
-  description = "Instance type for the frontend node group."
+  description = "Instance type for the frontend node group; choose an x86 type allowed by the AWS account."
   type        = string
-  default     = "t3.medium"
+  default     = "t3.small"
 }
 
 variable "backend_instance_type" {
-  description = "Instance type for the backend node group."
+  description = "Instance type for the backend node group; choose an x86 type allowed by the AWS account."
   type        = string
-  default     = "t3.medium"
+  default     = "t3.small"
 }
 
 variable "database_instance_type" {
-  description = "Instance type for the database node group."
+  description = "Instance type for the database node group; t3.small is for a small practice workload only."
   type        = string
-  default     = "t3.large"
+  default     = "t3.small"
 }
 
 variable "monitoring_instance_type" {
-  description = "Instance type for the monitoring node group."
+  description = "Instance type for monitoring add-ons; use an x86 type allowed by the AWS account."
   type        = string
-  default     = "t3.medium"
+  default     = "c7i-flex.large"
 }
 
 variable "tags" {

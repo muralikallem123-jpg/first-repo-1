@@ -23,11 +23,6 @@ output "private_subnet_ids" {
   value       = module.vpc.private_subnets
 }
 
-output "external_dns_hosted_zone_id" {
-  description = "Existing public Route 53 hosted zone ID used by ExternalDNS."
-  value       = var.route53_hosted_zone_id
-}
-
 output "node_group_labels" {
   description = "Workload label assigned to each EKS managed node group."
   value = {
